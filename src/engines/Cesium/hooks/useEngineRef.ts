@@ -1005,39 +1005,88 @@ export default function useEngineRef(
           if (position && typeof position === 'object') {
             const { lng, lat, height } = position;
             
-            if (typeof lng === 'number' && typeof lat === 'number' && typeof height === 'number') {
-              console.log("[updateLayerTransform] Applying position transform:", { lng, lat, height });
+            // Validate coordinates before proceeding
+            if (typeof lng !== 'number' || typeof lat !== 'number' || typeof height !== 'number' || 
+                isNaN(lng) || isNaN(lat) || isNaN(height)) {
+              console.log("[updateLayerTransform] Invalid position coordinates:", { lng, lat, height });
+              console.log("[updateLayerTransform] Skipping transform to prevent entity destruction");
+              return;
+            }
+            
+            // Validate coordinate ranges
+            if (lng < -180 || lng > 180 || lat < -90 || lat > 90) {
+              console.log("[updateLayerTransform] Coordinates out of valid range:", { lng, lat, height });
+              return;
+            }
+            
+            console.log("[updateLayerTransform] Applying position transform:", { lng, lat, height });
+            
+            try {
+              // CRITICAL FIX: Use the V2 approach with eastNorthUpToFixedFrame
+              // This creates a local coordinate system at the reference point
+              const referencePosition = Cesium.Cartesian3.fromDegrees(lng, lat, 0); // Reference at ellipsoid level
               
-              // Convert to Cartesian3 position
-              const cartesianPosition = Cesium.Cartesian3.fromDegrees(lng, lat, height);
+              // Create ENU (East-North-Up) transform matrix at the reference position
+              const enuTransform = Cesium.Transforms.eastNorthUpToFixedFrame(
+                referencePosition,
+                Cesium.Ellipsoid.WGS84
+              );
               
-              // Create transformation matrix
-              let modelMatrix = Cesium.Transforms.eastNorthUpToFixedFrame(cartesianPosition);
+              // Apply height offset in the local ENU coordinate system
+              // This makes height relative to the local surface, not the ellipsoid
+              const localOffset = new Cesium.Cartesian3(0, 0, height); // Height in local Z (up) direction
               
-              // Apply rotation if provided
+              // Apply rotation in the local coordinate system
+              let rotationMatrix = Cesium.Matrix3.IDENTITY;
               if (rotation && typeof rotation === 'object') {
                 const { heading = 0, pitch = 0, roll = 0 } = rotation;
                 const hpr = new Cesium.HeadingPitchRoll(
                   CesiumMath.toRadians(heading),
-                  CesiumMath.toRadians(pitch), 
+                  CesiumMath.toRadians(pitch),
                   CesiumMath.toRadians(roll)
                 );
-                const rotationMatrix = Cesium.Matrix3.fromHeadingPitchRoll(hpr);
-                const rotationMatrix4 = Cesium.Matrix4.fromRotationTranslation(rotationMatrix);
-                modelMatrix = Cesium.Matrix4.multiply(modelMatrix, rotationMatrix4, modelMatrix);
+                rotationMatrix = Cesium.Matrix3.fromHeadingPitchRoll(hpr);
+                console.log("[updateLayerTransform] Applied rotation (ENU approach):", { heading, pitch, roll });
               }
               
+              // Combine rotation and translation in local coordinates
+              const localTransform = Cesium.Matrix4.fromRotationTranslation(rotationMatrix, localOffset);
+              
+              // Transform from local ENU to world coordinates
+              const modelMatrix = Cesium.Matrix4.multiply(enuTransform, localTransform, new Cesium.Matrix4());
+              
+              console.log("[updateLayerTransform] Created modelMatrix with ENU approach (v2 method)");
+              
               // Apply scale if provided
-              if (scale && typeof scale === 'object') {
-                const { x = 1, y = 1, z = 1 } = scale;
-                const scaleMatrix = Cesium.Matrix4.fromScale(new Cesium.Cartesian3(x, y, z));
-                modelMatrix = Cesium.Matrix4.multiply(modelMatrix, scaleMatrix, modelMatrix);
+              if (scale !== undefined) {
+                let scaleVector;
+                if (typeof scale === 'number' && !isNaN(scale) && scale > 0) {
+                  // Handle scalar scale (e.g., scale: 2)
+                  scaleVector = new Cesium.Cartesian3(scale, scale, scale);
+                  console.log("[updateLayerTransform] Applying uniform scale:", scale);
+                } else if (typeof scale === 'object' && scale !== null) {
+                  // Handle object scale (e.g., scale: { x: 2, y: 2, z: 2 })
+                  const { x = 1, y = 1, z = 1 } = scale;
+                  if (!isNaN(x) && !isNaN(y) && !isNaN(z) && x > 0 && y > 0 && z > 0) {
+                    scaleVector = new Cesium.Cartesian3(x, y, z);
+                    console.log("[updateLayerTransform] Applying vector scale:", { x, y, z });
+                  } else {
+                    console.log("[updateLayerTransform] Invalid scale values, using default scale");
+                    scaleVector = new Cesium.Cartesian3(1, 1, 1);
+                  }
+                } else {
+                  scaleVector = new Cesium.Cartesian3(1, 1, 1);
+                }
+                
+                const scaleMatrix = Cesium.Matrix4.fromScale(scaleVector);
+                Cesium.Matrix4.multiply(modelMatrix, scaleMatrix, modelMatrix);
               }
               
               // Apply the transformation based on entity type
               if (entity instanceof Cesium.Entity) {
-                // For Entity objects, update position
-                entity.position = new Cesium.ConstantPositionProperty(cartesianPosition);
+                // For Entity objects, update position using the final transformed position
+                const finalPosition = Cesium.Matrix4.multiplyByPoint(modelMatrix, Cesium.Cartesian3.ZERO, new Cesium.Cartesian3());
+                entity.position = new Cesium.ConstantPositionProperty(finalPosition);
                 console.log("[updateLayerTransform] Updated Entity position");
               } else if (entity instanceof Cesium.Primitive && 'modelMatrix' in entity) {
                 // For Primitive objects with modelMatrix
@@ -1048,9 +1097,48 @@ export default function useEngineRef(
                 entity.modelMatrix = modelMatrix;
                 console.log("[updateLayerTransform] Updated Model modelMatrix");
               } else if (entity instanceof Cesium.Cesium3DTileset) {
-                // For 3D Tilesets
+                // For 3D Tilesets, apply the ENU transform directly
+                console.log("[updateLayerTransform] Processing 3D Tileset transform");
+                
+                // CRITICAL FIX: Use the ENU modelMatrix directly for 3D Tilesets
+                // The ENU approach already handles the proper coordinate transformation
                 entity.modelMatrix = modelMatrix;
+                console.log("[updateLayerTransform] Applied ENU modelMatrix directly to 3D Tileset");
+                
+                // Force the tileset to update its transform
+                if (entity.root) {
+                  entity.root.transform = entity.modelMatrix;
+                }
+                
                 console.log("[updateLayerTransform] Updated 3DTileset modelMatrix");
+                
+                // DEBUG: Check the actual position after transform
+                try {
+                  // Get the transformed center using the ENU approach
+                  const transformedCenter = Cesium.Matrix4.multiplyByPoint(
+                    entity.modelMatrix,
+                    Cesium.Cartesian3.ZERO, // Use origin in local coordinates
+                    new Cesium.Cartesian3()
+                  );
+                  
+                  // Convert back to lat/lng/height for debugging
+                  const cartographic = viewer.scene.globe.ellipsoid.cartesianToCartographic(transformedCenter);
+                  const debugPosition = {
+                    lng: cartographic.longitude * (180 / Math.PI),
+                    lat: cartographic.latitude * (180 / Math.PI),
+                    height: cartographic.height
+                  };
+                  
+                  console.log("[updateLayerTransform] 🎯 ACTUAL FINAL POSITION (ENU):", debugPosition);
+                  console.log("[updateLayerTransform] 🎯 INTENDED POSITION:", { lng, lat, height });
+                  console.log("[updateLayerTransform] 🎯 POSITION DIFFERENCE:", {
+                    lng: debugPosition.lng - lng,
+                    lat: debugPosition.lat - lat,
+                    height: debugPosition.height - height
+                  });
+                } catch (debugError) {
+                  console.log("[updateLayerTransform] Debug position calculation failed:", debugError);
+                }
               } else {
                 console.log("[updateLayerTransform] Unknown entity type, attempting modelMatrix update");
                 if ('modelMatrix' in entity) {
@@ -1061,8 +1149,16 @@ export default function useEngineRef(
               // Request a render to update the display
               viewer.scene.requestRender();
               console.log("[updateLayerTransform] Transform applied successfully");
+              
+            } catch (error) {
+              console.error("[updateLayerTransform] Error applying transform:", error);
+              console.log("[updateLayerTransform] Transform failed, but entity should remain intact");
             }
+          } else {
+            console.log("[updateLayerTransform] No position data provided");
           }
+        } else {
+          console.log("[updateLayerTransform] Invalid transform data:", transform);
         }
       },
     };

@@ -1,12 +1,12 @@
 {
-  "name": "@reearth/core",
-  "version": "0.0.7-alpha.38",
+  "name": "@ibrahimaces/reearth-core-custom",
+  "version": "0.0.7-alpha.38-custom.12",
   "author": "Re:Earth contributors <community@reearth.io>",
   "license": "Apache-2.0",
   "description": "A library that abstracts a map engine as one common API.",
   "type": "module",
-  "main": "dist/core.umd.cjs",
-  "module": "dist/core.js",
+  "main": "dist/reearth-core-custom.umd.cjs",
+  "module": "dist/reearth-core-custom.js",
   "types": "dist/index.d.ts",
   "files": [
     "src",

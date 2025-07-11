@@ -983,6 +983,88 @@ export default function useEngineRef(
         if (!viewer || viewer.isDestroyed()) return;
         return getCredits(viewer);
       },
+      updateLayerTransform: (layerId: string, transform: any) => {
+        const viewer = cesium.current?.cesiumElement;
+        if (!viewer || viewer.isDestroyed()) return;
+        
+        console.log("[updateLayerTransform] Searching for layer:", layerId, "with transform:", transform);
+        
+        // Find the entity/primitive for this layer
+        const entity = findEntity(viewer, layerId);
+        if (!entity) {
+          console.log("[updateLayerTransform] No entity found for layer:", layerId);
+          return;
+        }
+        
+        console.log("[updateLayerTransform] Found entity:", entity);
+        
+        // Create transformation matrix from transform data
+        if (transform && typeof transform === 'object') {
+          const { position, rotation, scale } = transform;
+          
+          if (position && typeof position === 'object') {
+            const { lng, lat, height } = position;
+            
+            if (typeof lng === 'number' && typeof lat === 'number' && typeof height === 'number') {
+              console.log("[updateLayerTransform] Applying position transform:", { lng, lat, height });
+              
+              // Convert to Cartesian3 position
+              const cartesianPosition = Cesium.Cartesian3.fromDegrees(lng, lat, height);
+              
+              // Create transformation matrix
+              let modelMatrix = Cesium.Transforms.eastNorthUpToFixedFrame(cartesianPosition);
+              
+              // Apply rotation if provided
+              if (rotation && typeof rotation === 'object') {
+                const { heading = 0, pitch = 0, roll = 0 } = rotation;
+                const hpr = new Cesium.HeadingPitchRoll(
+                  CesiumMath.toRadians(heading),
+                  CesiumMath.toRadians(pitch), 
+                  CesiumMath.toRadians(roll)
+                );
+                const rotationMatrix = Cesium.Matrix3.fromHeadingPitchRoll(hpr);
+                const rotationMatrix4 = Cesium.Matrix4.fromRotationTranslation(rotationMatrix);
+                modelMatrix = Cesium.Matrix4.multiply(modelMatrix, rotationMatrix4, modelMatrix);
+              }
+              
+              // Apply scale if provided
+              if (scale && typeof scale === 'object') {
+                const { x = 1, y = 1, z = 1 } = scale;
+                const scaleMatrix = Cesium.Matrix4.fromScale(new Cesium.Cartesian3(x, y, z));
+                modelMatrix = Cesium.Matrix4.multiply(modelMatrix, scaleMatrix, modelMatrix);
+              }
+              
+              // Apply the transformation based on entity type
+              if (entity instanceof Cesium.Entity) {
+                // For Entity objects, update position
+                entity.position = new Cesium.ConstantPositionProperty(cartesianPosition);
+                console.log("[updateLayerTransform] Updated Entity position");
+              } else if (entity instanceof Cesium.Primitive && 'modelMatrix' in entity) {
+                // For Primitive objects with modelMatrix
+                entity.modelMatrix = modelMatrix;
+                console.log("[updateLayerTransform] Updated Primitive modelMatrix");
+              } else if (entity instanceof Cesium.Model) {
+                // For Model objects
+                entity.modelMatrix = modelMatrix;
+                console.log("[updateLayerTransform] Updated Model modelMatrix");
+              } else if (entity instanceof Cesium.Cesium3DTileset) {
+                // For 3D Tilesets
+                entity.modelMatrix = modelMatrix;
+                console.log("[updateLayerTransform] Updated 3DTileset modelMatrix");
+              } else {
+                console.log("[updateLayerTransform] Unknown entity type, attempting modelMatrix update");
+                if ('modelMatrix' in entity) {
+                  (entity as any).modelMatrix = modelMatrix;
+                }
+              }
+              
+              // Request a render to update the display
+              viewer.scene.requestRender();
+              console.log("[updateLayerTransform] Transform applied successfully");
+            }
+          }
+        }
+      },
     };
   }, [cesium]);
 

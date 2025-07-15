@@ -213,6 +213,7 @@ export type EngineRef = {
     p3: Position3d,
   ) => [p1: Position3d, p2: Position3d, p3: Position3d];
   updateLayerTransform: (layerId: string, transform: any) => void;
+  resetLayerTransform: (layerId: string) => void;
   getCredits: () => Credits | undefined;
 } & MouseEventHandles;
 

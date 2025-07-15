@@ -13,7 +13,7 @@ export function replaceVariables(expression: string, feature?: any): [string, JP
   let i = exp.indexOf("${");
   const featureDefined = typeof feature !== "undefined";
   const jsonPathCache: Record<string, any[]> = {};
-  const varExpRegex = /^\$./;
+  const varExpRegex = /^\\$./;
   while (i >= 0) {
     if (isInsideQuotes(exp, i)) {
       const closeQuote = findCloseQuote(exp, i);
@@ -56,6 +56,7 @@ export function replaceVariables(expression: string, feature?: any): [string, JP
     }
   }
   result += exp;
+  
   return [result, literalJP];
 }
 

@@ -197,10 +197,20 @@ export class Node {
       property = feature?.id;
     } else if (feature && String(this._value) === "rootProperties") {
       property = feature.properties;
+    } else {
+      // Handle missing properties gracefully with sensible defaults
+      const varName = String(this._value);
+      if (varName === "fill" || varName === "stroke" || varName.includes("color")) {
+        property = "#cccccc"; // Default gray color
+      } else if (varName.includes("opacity") || varName.includes("alpha")) {
+        property = 1.0; // Default full opacity
+      } else if (varName.includes("width") || varName.includes("size")) {
+        property = 1; // Default width/size
+      } else {
+        property = ""; // Empty string for other properties
+      }
     }
-    if (typeof property === "undefined") {
-      property = "";
-    }
+
     return property;
   }
   _evaluateMemberDot(feature?: Feature) {
@@ -458,15 +468,20 @@ export class Node {
       if (typeof args === "undefined") {
         color = Color.fromBytes(255, 255, 255, 255);
       } else if (args.length > 1) {
-        const temp = Color.fromCssColorString(args[0].evaluate(feature));
+        const arg0 = args[0].evaluate(feature);
+        const arg1 = args[1].evaluate(feature);
+        
+        const temp = Color.fromCssColorString(arg0);
         if (temp) {
           color = temp;
         } else {
           throw new Error(`wrong literalColor call "${this._value}, ${args}}"`);
         }
-        color.alpha = args[1].evaluate(feature);
+        color.alpha = arg1;
       } else {
-        const temp = Color.fromCssColorString(args[0].evaluate(feature));
+        const arg0 = args[0].evaluate(feature);
+        
+        const temp = Color.fromCssColorString(arg0);
         if (temp) {
           color = temp;
         } else {

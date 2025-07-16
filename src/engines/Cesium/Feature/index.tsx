@@ -101,8 +101,41 @@ export default function Feature({
 }: FeatureComponentProps): JSX.Element | null {
   const data = extractSimpleLayerData(layer);
 
+  // Debug: Log ALL layers being processed by Feature component
+  console.log("🔍 Feature Component - Processing layer:", {
+    layerId: layer?.id,
+    layerTitle: layer?.layer?.title,
+    dataType: data?.type,
+    ionAssetId: (data as any)?.ionAssetId,
+    isHidden,
+    hasUrl: !!data?.url,
+    visible: layer?.layer?.visible
+  });
+
+  // Debug: Check if this is our tiles layer
+  if (data?.type === "tiles") {
+    console.log("🔍 Feature Component - Processing tiles layer:", {
+      layerId: layer?.id,
+      layerTitle: layer?.layer?.title,
+      dataType: data.type,
+      ionAssetId: (data as any)?.ionAssetId,
+      isHidden,
+      hasUrl: !!data.url
+    });
+  }
+
   const ext = !data?.type || (data.type as string) === "auto" ? guessType(data?.url) : undefined;
   let displayType = data?.type && displayConfig[ext ?? data.type];
+  
+  // Debug: Show display type for tiles
+  if (data?.type === "tiles") {
+    console.log("🔍 Feature Component - Display config for tiles:", {
+      dataType: data.type,
+      ext,
+      displayType,
+      shouldRenderRaster: displayType?.includes("raster")
+    });
+  }
   if (layer.features?.length > FEATURE_DELEGATE_THRESHOLD || data?.geojson?.useAsResource) {
     displayType = ["resource"];
   }

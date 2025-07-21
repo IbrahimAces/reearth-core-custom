@@ -20,27 +20,10 @@ export const useIon = ({
   const ionAssetId = useMemo(() => {
     if (layer?.layer.type !== "simple") return undefined;
     const assetId = (layer.layer.data as any)?.ionAssetId;
-    console.log("🔍 Ion Hook - Layer analysis:", {
-      layerId: layer?.id,
-      layerType: layer?.layer.type,
-      dataType: layer?.layer.data?.type,
-      extractedType: type,
-      ionAssetId: assetId
-    });
     return assetId;
   }, [layer]);
 
   useEffect(() => {
-    // Debug: Log the conditions
-    console.log("🔍 Ion Hook conditions:", {
-      isVisible,
-      show,
-      type,
-      ionAssetId,
-      hasToken: !!cesiumIonAccessToken,
-      shouldCreate: isVisible && show && type === "tiles" && !!ionAssetId
-    });
-
     if (!isVisible || !show || type !== "tiles" || !ionAssetId) {
       setImageryProvider(undefined);
       return;
@@ -48,7 +31,6 @@ export const useIon = ({
 
     const create = async () => {
       try {
-        console.log(`Creating Ion imagery for asset ${ionAssetId}`);
         const provider = await IonImageryProvider.fromAssetId(ionAssetId, {
           accessToken: cesiumIonAccessToken,
         });

@@ -101,41 +101,25 @@ export default function Feature({
 }: FeatureComponentProps): JSX.Element | null {
   const data = extractSimpleLayerData(layer);
 
-  // Debug: Log ALL layers being processed by Feature component
-  console.log("🔍 Feature Component - Processing layer:", {
-    layerId: layer?.id,
-    layerTitle: layer?.layer?.title,
-    dataType: data?.type,
-    ionAssetId: (data as any)?.ionAssetId,
-    isHidden,
-    hasUrl: !!data?.url,
-    visible: layer?.layer?.visible
-  });
-
-  // Debug: Check if this is our tiles layer
-  if (data?.type === "tiles") {
-    console.log("🔍 Feature Component - Processing tiles layer:", {
+  // Debug: Log sketch/geojson features specifically
+  if (data?.type === "geojson" || data?.isSketchLayer) {
+    console.log("🎨 [Feature] Processing sketch/geojson layer:", {
       layerId: layer?.id,
-      layerTitle: layer?.layer?.title,
-      dataType: data.type,
-      ionAssetId: (data as any)?.ionAssetId,
-      isHidden,
-      hasUrl: !!data.url
+      dataType: data?.type,
+      isSketchLayer: data?.isSketchLayer,
+      featuresCount: layer.features?.length,
+      features: layer.features?.map(f => ({
+        id: f.id,
+        type: f.type,
+        geometry: f.geometry?.type,
+        properties: Object.keys(f.properties || {})
+      }))
     });
   }
 
   const ext = !data?.type || (data.type as string) === "auto" ? guessType(data?.url) : undefined;
   let displayType = data?.type && displayConfig[ext ?? data.type];
   
-  // Debug: Show display type for tiles
-  if (data?.type === "tiles") {
-    console.log("🔍 Feature Component - Display config for tiles:", {
-      dataType: data.type,
-      ext,
-      displayType,
-      shouldRenderRaster: displayType?.includes("raster")
-    });
-  }
   if (layer.features?.length > FEATURE_DELEGATE_THRESHOLD || data?.geojson?.useAsResource) {
     displayType = ["resource"];
   }
@@ -159,6 +143,19 @@ export default function Feature({
 
   const renderComponent = (k: keyof AppearanceTypes, f?: ComputedFeature): JSX.Element | null => {
     if (!isRenderableAppearance(k)) return null;
+
+    // Debug: Log appearance processing for sketch features
+    if (data?.type === "geojson" || data?.isSketchLayer) {
+      console.log(`🎨 [Feature] Rendering ${k} for sketch feature:`, {
+        layerId: layer?.id,
+        featureId: f?.id,
+        hasFeature: !!f,
+        hasAppearanceProperty: !!f?.[k],
+        geometry: f?.geometry?.type,
+        isVisible: layer.layer.visible !== false && !isHidden,
+        displayType: displayType
+      });
+    }
 
     const useSceneSphericalHarmonicCoefficients =
       !!props.viewerProperty?.scene?.imageBasedLighting?.sphericalHarmonicCoefficients;

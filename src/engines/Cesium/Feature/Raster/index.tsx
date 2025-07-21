@@ -13,16 +13,6 @@ import { useWMS } from "./wms";
 function Raster({ isVisible, layer, property, meta }: Props) {
   const cesiumIonAccessToken = typeof meta?.cesiumIonAccessToken === "string" ? meta.cesiumIonAccessToken : undefined;
   
-  // Debug: Check if this is a tiles layer with ionAssetId
-  if (layer?.layer.type === "simple" && layer.layer.data?.type === "tiles") {
-    console.log("🔍 Raster Component - Tiles layer:", {
-      layerId: layer?.id,
-      ionAssetId: (layer.layer.data as any)?.ionAssetId,
-      isVisible,
-      hasAccessToken: !!cesiumIonAccessToken
-    });
-  }
-  
   useIon({ isVisible, layer, property, cesiumIonAccessToken });
   useWMS({ isVisible, layer, property });
   useTiles({ isVisible, layer, property });

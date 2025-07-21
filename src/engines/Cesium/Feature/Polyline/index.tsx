@@ -15,6 +15,7 @@ import {
   type FeatureComponentConfig,
   type FeatureProps,
   getTag,
+  extractSimpleLayerData,
 } from "../utils";
 
 export type Props = FeatureProps<Property>;
@@ -23,6 +24,21 @@ export type Property = PolylineAppearance & {
 };
 
 export default function Polyline({ id, isVisible, property, geometry, layer, feature }: Props) {
+  // Debug: Log sketch polyline processing
+  const layerData = extractSimpleLayerData(layer);
+  if (layerData?.isSketchLayer || layerData?.type === "geojson") {
+    console.log("🎨 [Polyline] Processing sketch polyline:", {
+      id,
+      layerId: layer?.id,
+      featureId: feature?.id,
+      isVisible,
+      geometry: geometry?.type,
+      hasProperty: !!property,
+      show: property?.show,
+      coordinates: geometry?.coordinates?.length
+    });
+  }
+
   const { show = true } = property || {};
   const coordinates = useMemo(
     () =>

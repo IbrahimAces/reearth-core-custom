@@ -28,6 +28,7 @@ import {
   type FeatureComponentConfig,
   type FeatureProps,
   getTag,
+  extractSimpleLayerData,
 } from "../utils";
 
 import marker from "./marker.svg";
@@ -40,7 +41,29 @@ export type Property = MarkerAppearance & {
   height?: number;
 };
 
-export default function Marker({ property, id, isVisible, geometry, layer, feature }: Props) {
+export default function Marker({
+  id,
+  isVisible,
+  property,
+  geometry,
+  layer,
+  feature,
+}: Props): JSX.Element | null {
+  // Debug: Log sketch marker processing
+  const layerData = extractSimpleLayerData(layer);
+  if (layerData?.isSketchLayer || layerData?.type === "geojson") {
+    console.log("🎨 [Marker] Processing sketch marker:", {
+      id,
+      layerId: layer?.id,
+      featureId: feature?.id,
+      isVisible,
+      geometry: geometry?.type,
+      hasProperty: !!property,
+      show: property?.show,
+      coordinates: geometry?.coordinates
+    });
+  }
+
   const coordinates = useMemo(
     () =>
       geometry?.type === "Point"

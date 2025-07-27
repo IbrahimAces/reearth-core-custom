@@ -101,21 +101,7 @@ export default function Feature({
 }: FeatureComponentProps): JSX.Element | null {
   const data = extractSimpleLayerData(layer);
 
-  // Debug: Log sketch/geojson features specifically
-  if (data?.type === "geojson" || data?.isSketchLayer) {
-    console.log("🎨 [Feature] Processing sketch/geojson layer:", {
-      layerId: layer?.id,
-      dataType: data?.type,
-      isSketchLayer: data?.isSketchLayer,
-      featuresCount: layer.features?.length,
-      features: layer.features?.map(f => ({
-        id: f.id,
-        type: f.type,
-        geometry: f.geometry?.type,
-        properties: Object.keys(f.properties || {})
-      }))
-    });
-  }
+
 
   const ext = !data?.type || (data.type as string) === "auto" ? guessType(data?.url) : undefined;
   let displayType = data?.type && displayConfig[ext ?? data.type];
@@ -145,7 +131,7 @@ export default function Feature({
     if (!isRenderableAppearance(k)) return null;
 
     // Debug: Log appearance processing for sketch features
-    if (data?.type === "geojson" || data?.isSketchLayer) {
+    /*if (data?.type === "geojson" || data?.isSketchLayer) {
       console.log(`🎨 [Feature] Rendering ${k} for sketch feature:`, {
         layerId: layer?.id,
         featureId: f?.id,
@@ -155,7 +141,7 @@ export default function Feature({
         isVisible: layer.layer.visible !== false && !isHidden,
         displayType: displayType
       });
-    }
+    }*/
 
     const useSceneSphericalHarmonicCoefficients =
       !!props.viewerProperty?.scene?.imageBasedLighting?.sphericalHarmonicCoefficients;

@@ -49,20 +49,7 @@ export default function Marker({
   layer,
   feature,
 }: Props): JSX.Element | null {
-  // Debug: Log sketch marker processing
-  const layerData = extractSimpleLayerData(layer);
-  if (layerData?.isSketchLayer || layerData?.type === "geojson") {
-    console.log("🎨 [Marker] Processing sketch marker:", {
-      id,
-      layerId: layer?.id,
-      featureId: feature?.id,
-      isVisible,
-      geometry: geometry?.type,
-      hasProperty: !!property,
-      show: property?.show,
-      coordinates: geometry?.coordinates
-    });
-  }
+
 
   const coordinates = useMemo(
     () =>

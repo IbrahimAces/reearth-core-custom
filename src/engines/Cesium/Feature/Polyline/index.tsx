@@ -1,4 +1,5 @@
 import { Cartesian3, Entity } from "cesium";
+import { PolylineDashMaterialProperty } from "@cesium/engine";
 import { isEqual } from "lodash-es";
 import { useEffect, useMemo, useRef } from "react";
 import { CesiumComponentRef, PolylineGraphics } from "resium";
@@ -46,6 +47,8 @@ export default function Polyline({ id, isVisible, property, geometry, layer, fea
     shadows,
     classificationType: ct,
     hideIndicator,
+    dashed,
+    dashLength,
   } = property ?? {};
 
   const positions = useCustomCompareMemo(
@@ -59,10 +62,12 @@ export default function Polyline({ id, isVisible, property, geometry, layer, fea
 
   const material = useMemo(
     () =>
-      tag?.isFeatureSelected && typeof layer?.["polyline"]?.selectedFeatureColor === "string"
+      dashed
+        ? new PolylineDashMaterialProperty({ color: toColor(strokeColor), dashLength: dashLength ?? 8 })
+        : tag?.isFeatureSelected && typeof layer?.["polyline"]?.selectedFeatureColor === "string"
         ? toColor(layer["polyline"]?.selectedFeatureColor)
         : toColor(strokeColor),
-    [strokeColor, layer, tag?.isFeatureSelected],
+    [strokeColor, layer, tag?.isFeatureSelected, dashed, dashLength],
   );
   const availability = useMemo(() => toTimeInterval(feature?.interval), [feature?.interval]);
   const distanceDisplayCondition = useMemo(

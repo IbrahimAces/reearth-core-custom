@@ -177,19 +177,50 @@ export const getLocationFromScreen = (
   if (!scene) return undefined;
   const camera = scene.camera;
   const ellipsoid = scene.globe.ellipsoid;
+  const win = new Cartesian2(x, y);
   let cartesian;
 
-  // 1) Prefer depth-based picking: supports 3D tiles/models and terrain when depth is available
+  // 0) If any object is under cursor, try pickPosition immediately
   try {
-    if (scene.pickPositionSupported) {
-      const p = scene.pickPosition(new Cartesian2(x, y));
+    const picked = scene.pick(win);
+    if (picked && scene.pickPositionSupported) {
+      const p = scene.pickPosition(win);
       if (p) cartesian = p;
     }
   } catch {}
 
+  // 1) Prefer depth-based picking: supports 3D tiles/models and terrain when depth is available
+  if (!cartesian) {
+    try {
+      const prevPTD = (scene as any).pickTranslucentDepth;
+      if (typeof prevPTD !== "undefined") {
+        (scene as any).pickTranslucentDepth = true;
+      }
+      if (scene.pickPositionSupported) {
+        const p = scene.pickPosition(win);
+        if (p) cartesian = p;
+      }
+      if (typeof prevPTD !== "undefined") {
+        (scene as any).pickTranslucentDepth = prevPTD;
+      }
+    } catch {}
+  }
+
+  // 1b) Fallback to pickFromRay (intersect primitives/tilesets) if available
+  if (!cartesian) {
+    try {
+      const ray = camera.getPickRay(win);
+      const pickFromRayFn = (scene as any).pickFromRay;
+      if (ray && typeof pickFromRayFn === "function") {
+        const res = pickFromRayFn.call(scene, ray);
+        if (res && (res as any).position) cartesian = (res as any).position as any;
+      }
+    } catch {}
+  }
+
   // 2) Fallback to terrain intersection if requested and depth pick failed
   if (!cartesian && withTerrain) {
-    const ray = camera.getPickRay(new Cartesian2(x, y));
+    const ray = camera.getPickRay(win);
     if (ray) {
       cartesian = scene.globe.pick(ray, scene);
     }
@@ -197,7 +228,7 @@ export const getLocationFromScreen = (
 
   // 3) Final fallback to ellipsoid intersection
   if (!cartesian) {
-    cartesian = camera?.pickEllipsoid(new Cartesian2(x, y), ellipsoid);
+    cartesian = camera?.pickEllipsoid(win, ellipsoid);
   }
 
   if (!cartesian) return undefined;

@@ -93,6 +93,8 @@ export type PolylineAppearance = {
   classificationType?: ClassificationType;
   hideIndicator?: boolean;
   selectedFeatureColor?: string; // This doesn't support expression
+  dashed?: boolean;
+  dashLength?: number;
 };
 
 export type PolygonAppearance = {

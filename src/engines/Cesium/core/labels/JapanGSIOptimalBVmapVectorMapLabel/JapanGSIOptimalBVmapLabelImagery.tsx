@@ -19,7 +19,7 @@ import { memo, useCallback, useEffect, useMemo, useRef, type FC } from "react";
 import { useCesium } from "resium";
 import { suspend } from "suspend-react";
 
-import { isNotNullish } from "../../../../Cesium/utils/polygon";
+import { isNotNullish } from "../../../utils/polygon";
 import { isColor, toColor } from "../../../common";
 
 import { getAnnotationType, type AnnotationType } from "./getAnnotationType";

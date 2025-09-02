@@ -178,15 +178,28 @@ export const getLocationFromScreen = (
   const camera = scene.camera;
   const ellipsoid = scene.globe.ellipsoid;
   let cartesian;
-  if (withTerrain) {
+
+  // 1) Prefer depth-based picking: supports 3D tiles/models and terrain when depth is available
+  try {
+    if (scene.pickPositionSupported) {
+      const p = scene.pickPosition(new Cartesian2(x, y));
+      if (p) cartesian = p;
+    }
+  } catch {}
+
+  // 2) Fallback to terrain intersection if requested and depth pick failed
+  if (!cartesian && withTerrain) {
     const ray = camera.getPickRay(new Cartesian2(x, y));
     if (ray) {
       cartesian = scene.globe.pick(ray, scene);
     }
   }
+
+  // 3) Final fallback to ellipsoid intersection
   if (!cartesian) {
     cartesian = camera?.pickEllipsoid(new Cartesian2(x, y), ellipsoid);
   }
+
   if (!cartesian) return undefined;
   const { latitude, longitude, height } = ellipsoid.cartesianToCartographic(cartesian);
   return {

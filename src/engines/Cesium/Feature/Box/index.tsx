@@ -2,7 +2,7 @@ import React, { memo } from "react";
 
 import { LayerEditEvent } from "../../..";
 import type { BoxAppearance, LatLngHeight } from "../../../../mantle";
-import type { FeatureComponentConfig, FeatureProps } from "../../Feature";
+import type { FeatureComponentConfig, FeatureProps } from "..";
 
 import { BOX_EDGES, SCALE_POINTS, SIDE_PLANES, SIDE_PLANE_NAMES } from "./constants";
 import { Edge } from "./Edge";

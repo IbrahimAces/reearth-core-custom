@@ -8,6 +8,9 @@ import {
   Math as CesiumMath,
   Scene,
   Cartesian2,
+  PointPrimitive,
+  Cesium3DTileFeature,
+  Cesium3DTilePointFeature,
   Cartesian3,
   CesiumWidget,
   PerspectiveFrustum,
@@ -179,64 +182,255 @@ export const getLocationFromScreen = (
   const ellipsoid = scene.globe.ellipsoid;
   const win = new Cartesian2(x, y);
   let cartesian;
+  let pickedObject;
 
-  // 0) If any object is under cursor, try pickPosition immediately
+  // Enhanced 3D object picking following v2 pattern
   try {
-    const picked = scene.pick(win);
-    if (picked && scene.pickPositionSupported) {
+    // Step 1: Try to pick any object first (3D models, tilesets, etc.)
+    pickedObject = scene.pick(win);
+    
+    // Filter out measurement markers and other UI elements
+    const isValidPickedObject = pickedObject && 
+      !(pickedObject.primitive instanceof PointPrimitive) &&
+      !(pickedObject.id?.name?.includes?.('MEASURE_')) &&
+      !(pickedObject.id?.name?.includes?.('P'));
+    
+    // Step 2: If we found a valid 3D object and pickPosition is supported, get exact position
+    if (isValidPickedObject && scene.pickPositionSupported) {
       const p = scene.pickPosition(win);
-      if (p) cartesian = p;
+      if (p) {
+        cartesian = p;
+        console.log("[Core] pickPosition on 3D object SUCCESS:", cartesian);
+      } else {
+        console.log("[Core] pickPosition on 3D object FAILED - trying drillPick");
+        
+        // Try drillPick to find 3D buildings behind UI elements
+        const drillPickResults = scene.drillPick(win);
+        console.log("[Core] drillPick results:", drillPickResults);
+        
+                 // Look for 3D tilesets or models in drillPick results
+         const building3D = drillPickResults?.find(obj => 
+           obj.primitive?.constructor?.name?.includes('3DTile') ||
+           obj.primitive?.constructor?.name?.includes('Model') ||
+           (obj.primitive?.constructor?.name?.includes('Primitive') &&
+           !(obj.primitive instanceof PointPrimitive))
+         );
+        
+        if (building3D) {
+          console.log("[Core] Found 3D building in drillPick:", building3D);
+          const p2 = scene.pickPosition(win);
+          if (p2) {
+            cartesian = p2;
+            pickedObject = building3D;
+            console.log("[Core] pickPosition after drillPick SUCCESS:", cartesian);
+          }
+        }
+      }
     }
-  } catch {}
+  } catch (error) {
+    console.warn("[Core] Initial object picking failed:", error);
+  }
 
-  // 1) Prefer depth-based picking: supports 3D tiles/models and terrain when depth is available
+  // Enhanced depth-based picking with better error handling
   if (!cartesian) {
     try {
       const prevPTD = (scene as any).pickTranslucentDepth;
       if (typeof prevPTD !== "undefined") {
         (scene as any).pickTranslucentDepth = true;
       }
+      
       if (scene.pickPositionSupported) {
         const p = scene.pickPosition(win);
-        if (p) cartesian = p;
+                if (p) {
+          cartesian = p;
+          // Enhanced pickPosition succeeded
+        }
       }
+      
       if (typeof prevPTD !== "undefined") {
         (scene as any).pickTranslucentDepth = prevPTD;
       }
-    } catch {}
-  }
-
-  // 1b) Fallback to pickFromRay (intersect primitives/tilesets) if available
-  if (!cartesian) {
-    try {
-      const ray = camera.getPickRay(win);
-      const pickFromRayFn = (scene as any).pickFromRay;
-      if (ray && typeof pickFromRayFn === "function") {
-        const res = pickFromRayFn.call(scene, ray);
-        if (res && (res as any).position) cartesian = (res as any).position as any;
-      }
-    } catch {}
-  }
-
-  // 2) Fallback to terrain intersection if requested and depth pick failed
-  if (!cartesian && withTerrain) {
-    const ray = camera.getPickRay(win);
-    if (ray) {
-      cartesian = scene.globe.pick(ray, scene);
+    } catch (error) {
+      console.warn("[Core] Enhanced depth picking failed:", error);
     }
   }
 
-  // 3) Final fallback to ellipsoid intersection
+  // Enhanced ray-based picking for primitives and tilesets
   if (!cartesian) {
-    cartesian = camera?.pickEllipsoid(win, ellipsoid);
+    try {
+      const ray = camera.getPickRay(win);
+      if (ray) {
+        // Try pickFromRay if available
+        const pickFromRayFn = (scene as any).pickFromRay;
+        if (typeof pickFromRayFn === "function") {
+          const res = pickFromRayFn.call(scene, ray);
+          if (res && (res as any).position) {
+            cartesian = (res as any).position as any;
+            console.log("[Core] pickFromRay SUCCESS:", cartesian);
+          }
+        }
+        
+        // Also try drillPick for multiple objects
+        if (!cartesian) {
+          const drillPickResults = scene.drillPick(win);
+          // drillPick results available
+          
+          if (drillPickResults && drillPickResults.length > 0) {
+            // Try pickPosition again after drillPick
+            if (scene.pickPositionSupported) {
+              const p = scene.pickPosition(win);
+              if (p) {
+                cartesian = p;
+                console.log("[Core] pickPosition after drillPick SUCCESS:", cartesian);
+              }
+            }
+          }
+        }
+      }
+    } catch (error) {
+      console.warn("[Core] Ray-based picking failed:", error);
+    }
   }
 
-  if (!cartesian) return undefined;
+  // Terrain intersection fallback
+  if (!cartesian && withTerrain) {
+    try {
+      const ray = camera.getPickRay(win);
+      if (ray) {
+        cartesian = scene.globe.pick(ray, scene);
+        if (cartesian) {
+          // Terrain pick succeeded
+        }
+      }
+    } catch (error) {
+      console.warn("[Core] Terrain picking failed:", error);
+    }
+  }
+
+  // Final ellipsoid fallback
+  if (!cartesian) {
+    try {
+      cartesian = camera?.pickEllipsoid(win, ellipsoid);
+      if (cartesian) {
+        // Ellipsoid fallback succeeded
+      }
+    } catch (error) {
+      console.warn("[Core] Ellipsoid picking failed:", error);
+    }
+  }
+
+  if (!cartesian) {
+    console.warn("[Core] All picking methods failed for", x, y);
+    return undefined;
+  }
+
   const { latitude, longitude, height } = ellipsoid.cartesianToCartographic(cartesian);
-  return {
+  const result = {
     lat: CesiumMath.toDegrees(latitude),
     lng: CesiumMath.toDegrees(longitude),
     height,
+  };
+  
+  return result;
+};
+
+// Simplified V2-style 3D picking - just use pickPosition if supported
+export const getLocationFromScreenWith3DPriority = (
+  scene: Scene | undefined | null,
+  x: number,
+  y: number,
+) => {
+  if (!scene) return undefined;
+  const camera = scene.camera;
+  const ellipsoid = scene.globe.ellipsoid;
+  const win = new Cartesian2(x, y);
+  let cartesian;
+
+  // 3D Priority picking attempt
+
+  // V2 exact pattern: if pickPosition is supported, use it directly
+  if (scene.pickPositionSupported) {
+    cartesian = scene.pickPosition(win);
+    if (cartesian) {
+      // 3D Priority pickPosition succeeded
+      const { latitude, longitude, height } = ellipsoid.cartesianToCartographic(cartesian);
+      const result = {
+        lat: CesiumMath.toDegrees(latitude),
+        lng: CesiumMath.toDegrees(longitude),
+        height,
+        pickedObject: true,
+        objectType: '3DObject'
+      };
+      return result;
+    }
+  }
+
+  // Fallback to terrain if pickPosition failed
+  try {
+    const ray = camera.getPickRay(win);
+    if (ray) {
+      cartesian = scene.globe.pick(ray, scene);
+      if (cartesian) {
+        // Terrain fallback
+        const { latitude, longitude, height } = ellipsoid.cartesianToCartographic(cartesian);
+        return {
+          lat: CesiumMath.toDegrees(latitude),
+          lng: CesiumMath.toDegrees(longitude),
+          height,
+          pickedObject: false,
+          objectType: 'Terrain'
+        };
+      }
+    }
+  } catch (error) {
+    console.warn("[Core] 3D Priority terrain failed:", error);
+  }
+
+  // Final ellipsoid fallback
+  cartesian = camera?.pickEllipsoid(win, ellipsoid);
+  if (cartesian) {
+    const { latitude, longitude, height } = ellipsoid.cartesianToCartographic(cartesian);
+    return {
+      lat: CesiumMath.toDegrees(latitude),
+      lng: CesiumMath.toDegrees(longitude),
+      height,
+      pickedObject: false,
+      objectType: 'Ellipsoid'
+    };
+  }
+
+  return undefined;
+};
+
+// Diagnostic function to understand what's in the scene
+export const diagnoseScene = (scene: Scene | undefined | null) => {
+  if (!scene) return;
+  
+  console.log("[Core] Scene Diagnosis:");
+  console.log("- pickPositionSupported:", scene.pickPositionSupported);
+  console.log("- primitives count:", scene.primitives.length);
+  console.log("- groundPrimitives count:", scene.groundPrimitives.length);
+  
+  // Check for 3D tilesets
+  const tilesets = [];
+  for (let i = 0; i < scene.primitives.length; i++) {
+    const primitive = scene.primitives.get(i);
+    if (primitive.constructor.name.includes('3DTileset')) {
+      tilesets.push({
+        ready: primitive.ready,
+        show: primitive.show,
+        url: primitive.url,
+        constructor: primitive.constructor.name
+      });
+    }
+  }
+  console.log("- 3D Tilesets:", tilesets);
+  
+  return {
+    pickPositionSupported: scene.pickPositionSupported,
+    primitivesCount: scene.primitives.length,
+    groundPrimitivesCount: scene.groundPrimitives.length,
+    tilesets: tilesets
   };
 };
 

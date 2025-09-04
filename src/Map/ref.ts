@@ -27,6 +27,8 @@ const engineRefKeys: FunctionKeys<EngineRef> = {
   getCameraFovInfo: 1,
   getClock: 1,
   getLocationFromScreen: 1,
+  getLocationFromScreenWith3DPriority: 1,
+  diagnoseScene: 1,
   sampleTerrainHeight: 1,
   computeGlobeHeight: 1,
   getGlobeHeight: 1,

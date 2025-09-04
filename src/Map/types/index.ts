@@ -92,6 +92,8 @@ export type EngineRef = {
       }
     | undefined;
   getLocationFromScreen: (x: number, y: number, withTerrain?: boolean) => LatLngHeight | undefined;
+  getLocationFromScreenWith3DPriority: (x: number, y: number) => (LatLngHeight & { pickedObject?: boolean; objectType?: string }) | undefined;
+  diagnoseScene: () => any;
   sampleTerrainHeight: (lng: number, lat: number) => Promise<number | undefined>;
   computeGlobeHeight: (lng: number, lat: number, height?: number) => number | undefined;
   getGlobeHeight: () => number | undefined;

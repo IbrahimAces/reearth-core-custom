@@ -9,6 +9,8 @@ import { MouseEventCallbacks, TickEventCallback, SketchType } from "../../../Map
 import { Position2d, Position3d } from "../../../types";
 import {
   getLocationFromScreen,
+  getLocationFromScreenWith3DPriority,
+  diagnoseScene,
   flyTo,
   lookAt,
   getCamera,
@@ -87,6 +89,16 @@ export default function useEngineRef(
         const viewer = cesium.current?.cesiumElement;
         if (!viewer || viewer.isDestroyed()) return;
         return getLocationFromScreen(viewer.scene, x, y, withTerrain);
+      },
+      getLocationFromScreenWith3DPriority: (x, y) => {
+        const viewer = cesium.current?.cesiumElement;
+        if (!viewer || viewer.isDestroyed()) return;
+        return getLocationFromScreenWith3DPriority(viewer.scene, x, y);
+      },
+      diagnoseScene: () => {
+        const viewer = cesium.current?.cesiumElement;
+        if (!viewer || viewer.isDestroyed()) return;
+        return diagnoseScene(viewer.scene);
       },
       getCameraFovInfo: ({ withTerrain, calcViewSize }) => {
         const viewer = cesium.current?.cesiumElement;

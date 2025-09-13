@@ -79,26 +79,44 @@ const drawIcon = (
 
   ctx.save();
 
-  c.width = w + shadowBlur * 2;
-  c.height = h + shadowBlur * 2;
+  // Use device pixel ratio for high-DPI rendering
+  const devicePixelRatio = window.devicePixelRatio || 1;
+  const scaledW = w + shadowBlur * 2;
+  const scaledH = h + shadowBlur * 2;
+  
+  // Set canvas size in CSS pixels
+  c.style.width = scaledW + "px";
+  c.style.height = scaledH + "px";
+  
+  // Set actual canvas size with device pixel ratio for crisp rendering
+  c.width = scaledW * devicePixelRatio;
+  c.height = scaledH * devicePixelRatio;
+  
+  // Scale the context to ensure correct drawing operations
+  ctx.scale(devicePixelRatio, devicePixelRatio);
   ctx.shadowBlur = shadowBlur;
   ctx.shadowOffsetX = shadowOffsetX;
   ctx.shadowOffsetY = shadowOffsetY;
   ctx.globalCompositeOperation = "source-over";
-  ctx.clearRect(0, 0, c.width, c.height);
-  ctx.drawImage(image, (c.width - w) / 2, (c.height - h) / 2, w, h);
+  ctx.clearRect(0, 0, scaledW, scaledH);
+  
+  // Enable high-quality image rendering
+  ctx.imageSmoothingEnabled = true;
+  ctx.imageSmoothingQuality = 'high';
+  
+  ctx.drawImage(image, (scaledW - w) / 2, (scaledH - h) / 2, w, h);
 
   if (crop === "circle") {
     ctx.fillStyle = "black";
     ctx.globalCompositeOperation = "destination-in";
-    ctx.arc(c.width / 2, c.height / 2, Math.min(w, h) / 2, 0, 2 * Math.PI);
+    ctx.arc(scaledW / 2, scaledH / 2, Math.min(w, h) / 2, 0, 2 * Math.PI);
     ctx.fill();
 
     if (shadow) {
       ctx.shadowColor = shadowColor;
       ctx.globalCompositeOperation = "destination-over";
       ctx.fillStyle = "black";
-      ctx.arc(c.width / 2, c.height / 2, Math.min(w, h) / 2, 0, 2 * Math.PI);
+      ctx.arc(scaledW / 2, scaledH / 2, Math.min(w, h) / 2, 0, 2 * Math.PI);
       ctx.fill();
     }
   } else if (shadow) {
@@ -184,7 +202,6 @@ export const getLocationFromScreen = (
   let cartesian;
   let pickedObject;
 
-  // Enhanced 3D object picking following v2 pattern
   try {
     // Step 1: Try to pick any object first (3D models, tilesets, etc.)
     pickedObject = scene.pick(win);
@@ -200,13 +217,9 @@ export const getLocationFromScreen = (
       const p = scene.pickPosition(win);
       if (p) {
         cartesian = p;
-        console.log("[Core] pickPosition on 3D object SUCCESS:", cartesian);
       } else {
-        console.log("[Core] pickPosition on 3D object FAILED - trying drillPick");
-        
         // Try drillPick to find 3D buildings behind UI elements
         const drillPickResults = scene.drillPick(win);
-        console.log("[Core] drillPick results:", drillPickResults);
         
                  // Look for 3D tilesets or models in drillPick results
          const building3D = drillPickResults?.find(obj => 
@@ -217,12 +230,10 @@ export const getLocationFromScreen = (
          );
         
         if (building3D) {
-          console.log("[Core] Found 3D building in drillPick:", building3D);
           const p2 = scene.pickPosition(win);
           if (p2) {
             cartesian = p2;
             pickedObject = building3D;
-            console.log("[Core] pickPosition after drillPick SUCCESS:", cartesian);
           }
         }
       }
@@ -231,7 +242,6 @@ export const getLocationFromScreen = (
     console.warn("[Core] Initial object picking failed:", error);
   }
 
-  // Enhanced depth-based picking with better error handling
   if (!cartesian) {
     try {
       const prevPTD = (scene as any).pickTranslucentDepth;
@@ -241,9 +251,8 @@ export const getLocationFromScreen = (
       
       if (scene.pickPositionSupported) {
         const p = scene.pickPosition(win);
-                if (p) {
+        if (p) {
           cartesian = p;
-          // Enhanced pickPosition succeeded
         }
       }
       
@@ -255,7 +264,6 @@ export const getLocationFromScreen = (
     }
   }
 
-  // Enhanced ray-based picking for primitives and tilesets
   if (!cartesian) {
     try {
       const ray = camera.getPickRay(win);
@@ -266,14 +274,12 @@ export const getLocationFromScreen = (
           const res = pickFromRayFn.call(scene, ray);
           if (res && (res as any).position) {
             cartesian = (res as any).position as any;
-            console.log("[Core] pickFromRay SUCCESS:", cartesian);
           }
         }
         
         // Also try drillPick for multiple objects
         if (!cartesian) {
           const drillPickResults = scene.drillPick(win);
-          // drillPick results available
           
           if (drillPickResults && drillPickResults.length > 0) {
             // Try pickPosition again after drillPick
@@ -281,7 +287,6 @@ export const getLocationFromScreen = (
               const p = scene.pickPosition(win);
               if (p) {
                 cartesian = p;
-                console.log("[Core] pickPosition after drillPick SUCCESS:", cartesian);
               }
             }
           }
@@ -298,9 +303,6 @@ export const getLocationFromScreen = (
       const ray = camera.getPickRay(win);
       if (ray) {
         cartesian = scene.globe.pick(ray, scene);
-        if (cartesian) {
-          // Terrain pick succeeded
-        }
       }
     } catch (error) {
       console.warn("[Core] Terrain picking failed:", error);
@@ -311,16 +313,12 @@ export const getLocationFromScreen = (
   if (!cartesian) {
     try {
       cartesian = camera?.pickEllipsoid(win, ellipsoid);
-      if (cartesian) {
-        // Ellipsoid fallback succeeded
-      }
     } catch (error) {
       console.warn("[Core] Ellipsoid picking failed:", error);
     }
   }
 
   if (!cartesian) {
-    console.warn("[Core] All picking methods failed for", x, y);
     return undefined;
   }
 
@@ -346,13 +344,11 @@ export const getLocationFromScreenWith3DPriority = (
   const win = new Cartesian2(x, y);
   let cartesian;
 
-  // 3D Priority picking attempt
 
   // V2 exact pattern: if pickPosition is supported, use it directly
   if (scene.pickPositionSupported) {
     cartesian = scene.pickPosition(win);
     if (cartesian) {
-      // 3D Priority pickPosition succeeded
       const { latitude, longitude, height } = ellipsoid.cartesianToCartographic(cartesian);
       const result = {
         lat: CesiumMath.toDegrees(latitude),
@@ -371,7 +367,6 @@ export const getLocationFromScreenWith3DPriority = (
     if (ray) {
       cartesian = scene.globe.pick(ray, scene);
       if (cartesian) {
-        // Terrain fallback
         const { latitude, longitude, height } = ellipsoid.cartesianToCartographic(cartesian);
         return {
           lat: CesiumMath.toDegrees(latitude),
@@ -406,11 +401,6 @@ export const getLocationFromScreenWith3DPriority = (
 export const diagnoseScene = (scene: Scene | undefined | null) => {
   if (!scene) return;
   
-  console.log("[Core] Scene Diagnosis:");
-  console.log("- pickPositionSupported:", scene.pickPositionSupported);
-  console.log("- primitives count:", scene.primitives.length);
-  console.log("- groundPrimitives count:", scene.groundPrimitives.length);
-  
   // Check for 3D tilesets
   const tilesets = [];
   for (let i = 0; i < scene.primitives.length; i++) {
@@ -424,7 +414,6 @@ export const diagnoseScene = (scene: Scene | undefined | null) => {
       });
     }
   }
-  console.log("- 3D Tilesets:", tilesets);
   
   return {
     pickPositionSupported: scene.pickPositionSupported,

@@ -130,18 +130,7 @@ export default function Feature({
   const renderComponent = (k: keyof AppearanceTypes, f?: ComputedFeature): JSX.Element | null => {
     if (!isRenderableAppearance(k)) return null;
 
-    // Debug: Log appearance processing for sketch features
-    /*if (data?.type === "geojson" || data?.isSketchLayer) {
-      console.log(`🎨 [Feature] Rendering ${k} for sketch feature:`, {
-        layerId: layer?.id,
-        featureId: f?.id,
-        hasFeature: !!f,
-        hasAppearanceProperty: !!f?.[k],
-        geometry: f?.geometry?.type,
-        isVisible: layer.layer.visible !== false && !isHidden,
-        displayType: displayType
-      });
-    }*/
+    // Removed excessive debug logging to prevent render loops
 
     const useSceneSphericalHarmonicCoefficients =
       !!props.viewerProperty?.scene?.imageBasedLighting?.sphericalHarmonicCoefficients;

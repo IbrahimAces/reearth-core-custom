@@ -144,13 +144,29 @@ export default function ({
     if (geometry == null || (type !== "polyline" && geometry.type === "LineString")) {
       return null;
     }
-    return feature(geometry, {
+    
+    // Base properties for all features
+    const baseProperties = {
       id: uuidv4(),
       type: geoOptions.type,
       positions: geoOptions.controlPoints,
       extrudedHeight,
-    });
-  }, [extrudedHeight, geometryOptions, markerGeometryRef, type, engineRef]);
+    };
+    
+    // Add marker-specific properties if this is a marker
+    if (type === "marker") {
+      return feature(geometry, {
+        ...baseProperties,
+        label: sketchOptions.markerLabel,
+        image: sketchOptions.markerImage,
+        imageSize: sketchOptions.markerImageSize,
+        labelText: sketchOptions.markerLabelText,
+        labelPosition: sketchOptions.markerLabelPosition,
+      });
+    }
+    
+    return feature(geometry, baseProperties);
+  }, [extrudedHeight, geometryOptions, markerGeometryRef, type, engineRef, sketchOptions]);
 
   const updateFeature = useCallback(() => {
     if (geometryOptions == null || !selectedFeature?.id) {
@@ -160,13 +176,29 @@ export default function ({
     if (geometry == null) {
       return null;
     }
-    return feature(geometry, {
+    
+    // Base properties for all features
+    const baseProperties = {
       id: selectedFeature?.id,
       type: geometryOptions?.type,
       positions: geometryOptions?.controlPoints,
       extrudedHeight,
-    });
-  }, [extrudedHeight, geometryOptions, selectedFeature, engineRef]);
+    };
+    
+    // Preserve marker-specific properties if this is a marker
+    if (type === "marker" && selectedFeature?.properties) {
+      return feature(geometry, {
+        ...baseProperties,
+        label: selectedFeature.properties.label || sketchOptions.markerLabel,
+        image: selectedFeature.properties.image || sketchOptions.markerImage,
+        imageSize: selectedFeature.properties.imageSize || sketchOptions.markerImageSize,
+        labelText: selectedFeature.properties.labelText || sketchOptions.markerLabelText,
+        labelPosition: selectedFeature.properties.labelPosition || sketchOptions.markerLabelPosition,
+      });
+    }
+    
+    return feature(geometry, baseProperties);
+  }, [extrudedHeight, geometryOptions, selectedFeature, engineRef, type, sketchOptions]);
 
   const updateGeometryOptions = useCallback(
     (controlPoint?: Position3d) => {

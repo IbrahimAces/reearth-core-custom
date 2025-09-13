@@ -50,6 +50,8 @@ export default function Marker({
   feature,
 }: Props): JSX.Element | null {
 
+  // Removed excessive debug logging to prevent render loops
+
 
   const coordinates = useMemo(
     () =>
@@ -130,6 +132,18 @@ export default function Marker({
   }, [coordinates, extrude]);
 
   const isStyleImage = !style || style === "image";
+  
+  // Debug image property before passing to useIcon
+  if (image && isStyleImage) {
+    console.log('[Marker] About to load image:', {
+      image,
+      imageType: typeof image,
+      style,
+      isStyleImage,
+      id
+    });
+  }
+  
   const [icon, imgw, imgh] = useIcon({
     image: isStyleImage ? image : undefined,
     imageSize,
@@ -271,30 +285,30 @@ export default function Marker({
         )}
         {label && (
           <LabelGraphics
-            horizontalOrigin={
-              labelPos === "right" || labelPos == "righttop" || labelPos === "rightbottom"
-                ? HorizontalOrigin.LEFT
-                : labelPos === "left" || labelPos === "lefttop" || labelPos === "leftbottom"
-                  ? HorizontalOrigin.RIGHT
-                  : HorizontalOrigin.CENTER
-            }
-            verticalOrigin={
-              labelPos === "bottom" || labelPos === "rightbottom" || labelPos === "leftbottom"
-                ? VerticalOrigin.TOP
-                : labelPos === "top" || labelPos === "righttop" || labelPos === "lefttop"
-                  ? VerticalOrigin.BOTTOM
-                  : VerticalOrigin.CENTER
-            }
-            pixelOffset={labelPixelOffset}
-            fillColor={labelColorCesium}
-            font={toCSSFont(labelTypography, { fontSize: 30 })}
-            text={stringLabelText}
-            showBackground={labelBackground}
-            backgroundColor={labelBackgroundColorCesium}
-            backgroundPadding={labelBackgroundPadding}
-            heightReference={heightReference(hr)}
-            distanceDisplayCondition={distanceDisplayCondition}
-          />
+              horizontalOrigin={
+                labelPos === "right" || labelPos == "righttop" || labelPos === "rightbottom"
+                  ? HorizontalOrigin.LEFT
+                  : labelPos === "left" || labelPos === "lefttop" || labelPos === "leftbottom"
+                    ? HorizontalOrigin.RIGHT
+                    : HorizontalOrigin.CENTER
+              }
+              verticalOrigin={
+                labelPos === "bottom" || labelPos === "rightbottom" || labelPos === "leftbottom"
+                  ? VerticalOrigin.TOP
+                  : labelPos === "top" || labelPos === "righttop" || labelPos === "lefttop"
+                    ? VerticalOrigin.BOTTOM
+                    : VerticalOrigin.CENTER
+              }
+              pixelOffset={labelPixelOffset}
+              fillColor={labelColorCesium}
+              font={toCSSFont(labelTypography, { fontSize: 30 })}
+              text={stringLabelText}
+              showBackground={labelBackground}
+              backgroundColor={labelBackgroundColorCesium}
+              backgroundPadding={labelBackgroundPadding}
+              heightReference={heightReference(hr)}
+              distanceDisplayCondition={distanceDisplayCondition}
+            />
         )}
       </EntityExt>
     </>

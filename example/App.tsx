@@ -67,6 +67,7 @@ function App() {
         handleSpatialIdPick={handleSpatialIdPick}
         spatialIdZoom={spatialIdZoom}
         handleSpatialIdZoomChange={handleSpatialIdZoomChange}
+        mapRef={ref}
       />
       <SelectionPanel selectedLayer={selectedLayer} selectedFeature={selectedFeature} />
       <CoreVisualizer

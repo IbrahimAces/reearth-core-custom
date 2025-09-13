@@ -37,9 +37,13 @@ export const evalSimpleLayerFeature = (
 ): ComputedFeature => {
   const appearances: Partial<LayerAppearanceTypes> = pick(layer, appearanceKeys);
   const nextFeature = evalJsonProperties(layer, feature);
+  const evaluatedAppearances = evalLayerAppearances(appearances, layer, nextFeature);
+  
+  // Clean evaluation without debug logging
+  
   return {
     ...nextFeature,
-    ...evalLayerAppearances(appearances, layer, nextFeature),
+    ...evaluatedAppearances,
     type: "computedFeature",
     interval,
   };

@@ -12,10 +12,17 @@ export const useImage = (src?: string): HTMLImageElement | undefined => {
       }
       return;
     }
+    
+    console.log('[useImage] Loading image:', src, typeof src);
+    
     const img = new Image();
     img.crossOrigin = "anonymous";
     img.onload = () => {
-      setImg(imgRef.current);
+      console.log('[useImage] Image loaded successfully:', src);
+      setImg(img); // Fix: should be img, not imgRef.current
+    };
+    img.onerror = (e) => {
+      console.error('[useImage] Image failed to load:', src, e);
     };
     img.src = src;
     imgRef.current = img;

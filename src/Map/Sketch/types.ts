@@ -25,12 +25,6 @@ export type SketchOptions = {
   rightClickToAbort?: boolean;
   autoResetInteractionMode?: boolean;
   useCentroidExtrudedHeight?: boolean;
-  // Marker-specific options
-  markerLabel?: string;
-  markerImage?: string;
-  markerImageSize?: number;
-  markerLabelText?: string;
-  markerLabelPosition?: "left" | "right" | "top" | "bottom" | "lefttop" | "leftbottom" | "righttop" | "rightbottom";
 };
 
 export type GeometryOptionsXYZ = {

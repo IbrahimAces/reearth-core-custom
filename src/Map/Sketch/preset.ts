@@ -12,14 +12,6 @@ export const PRESET_APPEARANCE: SketchAppearance = {
     pointColor: "#00bebe",
     pointOutlineColor: "#ffffff",
     pointOutlineWidth: 2,
-    // Label options
-    label: false,
-    labelText: "",
-    labelPosition: "right",
-    labelBackground: true,
-    labelBackgroundColor: "#ffffff",
-    labelBackgroundPaddingHorizontal: 4,
-    labelBackgroundPaddingVertical: 2,
     // Image options
     image: undefined,
     imageSize: 32,

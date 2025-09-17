@@ -153,18 +153,6 @@ export default function ({
       extrudedHeight,
     };
     
-    // Add marker-specific properties if this is a marker
-    if (type === "marker") {
-      return feature(geometry, {
-        ...baseProperties,
-        label: sketchOptions.markerLabel,
-        image: sketchOptions.markerImage,
-        imageSize: sketchOptions.markerImageSize,
-        labelText: sketchOptions.markerLabelText,
-        labelPosition: sketchOptions.markerLabelPosition,
-      });
-    }
-    
     return feature(geometry, baseProperties);
   }, [extrudedHeight, geometryOptions, markerGeometryRef, type, engineRef, sketchOptions]);
 
@@ -184,18 +172,6 @@ export default function ({
       positions: geometryOptions?.controlPoints,
       extrudedHeight,
     };
-    
-    // Preserve marker-specific properties if this is a marker
-    if (type === "marker" && selectedFeature?.properties) {
-      return feature(geometry, {
-        ...baseProperties,
-        label: selectedFeature.properties.label || sketchOptions.markerLabel,
-        image: selectedFeature.properties.image || sketchOptions.markerImage,
-        imageSize: selectedFeature.properties.imageSize || sketchOptions.markerImageSize,
-        labelText: selectedFeature.properties.labelText || sketchOptions.markerLabelText,
-        labelPosition: selectedFeature.properties.labelPosition || sketchOptions.markerLabelPosition,
-      });
-    }
     
     return feature(geometry, baseProperties);
   }, [extrudedHeight, geometryOptions, selectedFeature, engineRef, type, sketchOptions]);

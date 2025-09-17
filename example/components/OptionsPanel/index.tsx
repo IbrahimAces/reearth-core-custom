@@ -72,24 +72,6 @@ const OptionsPanel: FC<OptionsPanelProps> = ({
   mapRef,
 }) => {
   const [open, setOpen] = useState(false);
-  
-  // Marker configuration state
-  const [markerLabel, setMarkerLabel] = useState("");
-  const [markerImage, setMarkerImage] = useState("");
-  const [markerImageSize, setMarkerImageSize] = useState(32);
-  const [markerLabelText, setMarkerLabelText] = useState("");
-  const [markerLabelPosition, setMarkerLabelPosition] = useState<"left" | "right" | "top" | "bottom" | "lefttop" | "leftbottom" | "righttop" | "rightbottom">("right");
-
-  // Function to update marker options
-  const updateMarkerOptions = () => {
-    mapRef.current?.sketch.overrideOptions({
-      markerLabel,
-      markerImage,
-      markerImageSize,
-      markerLabelText,
-      markerLabelPosition,
-    });
-  };
 
   return (
     <>
@@ -205,76 +187,6 @@ const OptionsPanel: FC<OptionsPanelProps> = ({
             </div>
             
             {/* Marker Configuration */}
-            {sketchTool === "marker" && (
-              <>
-                <Separator />
-                <div className="space-y-3">
-                  <div className="text-sm font-medium">Marker Configuration</div>
-                  
-                  <div className="space-y-2">
-                    <label htmlFor="marker-label" className="text-xs block">Label Text</label>
-                    <input
-                      id="marker-label"
-                      placeholder="Enter marker label"
-                      value={markerLabelText}
-                      onChange={(e: React.ChangeEvent<HTMLInputElement>) => setMarkerLabelText(e.target.value)}
-                      className="h-8 text-xs w-full px-2 border rounded"
-                    />
-                  </div>
-                  
-                  <div className="space-y-2">
-                    <label htmlFor="marker-image" className="text-xs block">Image URL</label>
-                    <input
-                      id="marker-image"
-                      placeholder="Enter image URL"
-                      value={markerImage}
-                      onChange={(e: React.ChangeEvent<HTMLInputElement>) => setMarkerImage(e.target.value)}
-                      className="h-8 text-xs w-full px-2 border rounded"
-                    />
-                  </div>
-                  
-                  <div className="space-y-2">
-                    <label className="text-xs block">Image Size: {markerImageSize}px</label>
-                    <Slider
-                      value={[markerImageSize]}
-                      onValueChange={(value) => setMarkerImageSize(value[0])}
-                      min={16}
-                      max={128}
-                      step={4}
-                      className="w-full"
-                    />
-                  </div>
-                  
-                  <div className="space-y-2">
-                    <label className="text-xs block">Label Position</label>
-                    <Select value={markerLabelPosition} onValueChange={(value: any) => setMarkerLabelPosition(value)}>
-                      <SelectTrigger className="h-8 text-xs">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="left">Left</SelectItem>
-                        <SelectItem value="right">Right</SelectItem>
-                        <SelectItem value="top">Top</SelectItem>
-                        <SelectItem value="bottom">Bottom</SelectItem>
-                        <SelectItem value="lefttop">Left Top</SelectItem>
-                        <SelectItem value="leftbottom">Left Bottom</SelectItem>
-                        <SelectItem value="righttop">Right Top</SelectItem>
-                        <SelectItem value="rightbottom">Right Bottom</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  
-                  <Button 
-                    size="sm" 
-                    variant="default" 
-                    onClick={updateMarkerOptions}
-                    className="w-full h-8 text-xs"
-                  >
-                    Apply Marker Settings
-                  </Button>
-                </div>
-              </>
-            )}
           </OptionSection>
 
           <OptionSection title="Spatial ID">

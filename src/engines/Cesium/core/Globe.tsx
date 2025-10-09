@@ -54,16 +54,8 @@ export default function Globe({
 
   // Effect to load and resolve terrain provider
   useEffect(() => {
-    console.log('[Terrain] Configuration changed:', {
-      enabled: terrainConfig.enabled,
-      type: terrainConfig.type,
-      hasToken: !!terrainConfig.ionAccessToken,
-      tokenPreview: terrainConfig.ionAccessToken?.substring(0, 20) + '...'
-    });
-    
     // If terrain is disabled, use flat ellipsoid immediately
     if (!terrainConfig.enabled) {
-      console.log('[Terrain] Disabled - using flat ellipsoid');
       setResolvedTerrainProvider(defaultTerrainProvider);
       setIsLoading(false);
       return;
@@ -76,24 +68,19 @@ export default function Globe({
       const result = provider(terrainConfig);
       
       if (result instanceof Promise) {
-        console.log(`[Terrain] Loading ${terrainConfig.type} terrain provider...`);
         setIsLoading(true);
         
         result
           .then((resolved) => {
-            console.log(`[Terrain] Successfully loaded ${terrainConfig.type} terrain provider`);
             setResolvedTerrainProvider(resolved);
             setIsLoading(false);
           })
           .catch((error) => {
-            console.error(`[Terrain] Failed to load terrain provider (${terrainConfig.type}):`, error);
-            console.warn('[Terrain] Falling back to default ellipsoid terrain');
             setResolvedTerrainProvider(defaultTerrainProvider);
             setIsLoading(false);
           });
       } else {
         // Synchronous provider
-        console.log(`[Terrain] Using synchronous ${terrainConfig.type} terrain provider`);
         setResolvedTerrainProvider(result ?? defaultTerrainProvider);
         setIsLoading(false);
       }

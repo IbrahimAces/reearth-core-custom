@@ -5,7 +5,7 @@ import {
   IonResource,
   TerrainProvider,
 } from "cesium";
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Globe as CesiumGlobe } from "resium";
 
 import type { ViewerProperty, TerrainProperty } from "../..";
@@ -30,18 +30,19 @@ export default function Globe({
     [property?.terrain],
   );
 
-  const terrainProvider = useMemo((): Promise<TerrainProvider> | TerrainProvider | undefined => {
-    const opts = {
-      terrain: terrainProperty?.enabled,
-      terrainType: terrainProperty?.type,
-      normal: terrainProperty?.normal,
-      ionAccessToken: property?.assets?.cesium?.terrain?.ionAccessToken || cesiumIonAccessToken,
-      ionAsset: property?.assets?.cesium?.terrain?.ionAsset,
-      ionUrl: property?.assets?.cesium?.terrain?.ionUrl,
-    };
-    const provider = opts.terrain ? terrainProviders[opts.terrainType || "cesium"] : undefined;
-    return (typeof provider === "function" ? provider(opts) : provider) ?? defaultTerrainProvider;
-  }, [
+  // State to hold the resolved terrain provider
+  const [resolvedTerrainProvider, setResolvedTerrainProvider] = useState<TerrainProvider>(defaultTerrainProvider);
+  const [isLoading, setIsLoading] = useState(false);
+
+  // Configuration dependencies
+  const terrainConfig = useMemo(() => ({
+    enabled: terrainProperty?.enabled,
+    type: terrainProperty?.type,
+    normal: terrainProperty?.normal,
+    ionAccessToken: property?.assets?.cesium?.terrain?.ionAccessToken || cesiumIonAccessToken,
+    ionAsset: property?.assets?.cesium?.terrain?.ionAsset,
+    ionUrl: property?.assets?.cesium?.terrain?.ionUrl,
+  }), [
     terrainProperty?.enabled,
     terrainProperty?.type,
     terrainProperty?.normal,
@@ -51,14 +52,68 @@ export default function Globe({
     cesiumIonAccessToken,
   ]);
 
+  // Effect to load and resolve terrain provider
+  useEffect(() => {
+    console.log('[Terrain] Configuration changed:', {
+      enabled: terrainConfig.enabled,
+      type: terrainConfig.type,
+      hasToken: !!terrainConfig.ionAccessToken,
+      tokenPreview: terrainConfig.ionAccessToken?.substring(0, 20) + '...'
+    });
+    
+    // If terrain is disabled, use flat ellipsoid immediately
+    if (!terrainConfig.enabled) {
+      console.log('[Terrain] Disabled - using flat ellipsoid');
+      setResolvedTerrainProvider(defaultTerrainProvider);
+      setIsLoading(false);
+      return;
+    }
+    
+    const provider = terrainProviders[terrainConfig.type || "cesium"];
+    
+    // If provider is a function (returns Promise or Provider)
+    if (typeof provider === "function") {
+      const result = provider(terrainConfig);
+      
+      if (result instanceof Promise) {
+        console.log(`[Terrain] Loading ${terrainConfig.type} terrain provider...`);
+        setIsLoading(true);
+        
+        result
+          .then((resolved) => {
+            console.log(`[Terrain] Successfully loaded ${terrainConfig.type} terrain provider`);
+            setResolvedTerrainProvider(resolved);
+            setIsLoading(false);
+          })
+          .catch((error) => {
+            console.error(`[Terrain] Failed to load terrain provider (${terrainConfig.type}):`, error);
+            console.warn('[Terrain] Falling back to default ellipsoid terrain');
+            setResolvedTerrainProvider(defaultTerrainProvider);
+            setIsLoading(false);
+          });
+      } else {
+        // Synchronous provider
+        console.log(`[Terrain] Using synchronous ${terrainConfig.type} terrain provider`);
+        setResolvedTerrainProvider(result ?? defaultTerrainProvider);
+        setIsLoading(false);
+      }
+    } else {
+      // Static provider
+      setResolvedTerrainProvider(provider ?? defaultTerrainProvider);
+      setIsLoading(false);
+    }
+  }, [terrainConfig]);
+
   const baseColor = useMemo(
     () => toColor(property?.globe?.baseColor),
     [property?.globe?.baseColor],
   );
 
   useEffect(() => {
-    onTerrainProviderChange?.();
-  }, [terrainProvider, onTerrainProviderChange]);
+    if (!isLoading) {
+      onTerrainProviderChange?.();
+    }
+  }, [resolvedTerrainProvider, isLoading, onTerrainProviderChange]);
 
   return (
     <CesiumGlobe
@@ -69,7 +124,7 @@ export default function Globe({
       atmosphereSaturationShift={property?.globe?.atmosphere?.saturationShift}
       atmosphereHueShift={property?.globe?.atmosphere?.hueShift}
       atmosphereBrightnessShift={property?.globe?.atmosphere?.brightnessShift}
-      terrainProvider={terrainProvider}
+      terrainProvider={resolvedTerrainProvider}
       depthTestAgainstTerrain={!!property?.globe?.depthTestAgainstTerrain}
     />
   );
